@@ -29,7 +29,22 @@ void stopTimer0() {
   TCCR0B  |= (0 << CS00);
 }
 
+/*********
+   DHT11
+ ********/
+void readDHT11() {
+  char number[2];
+  // Start communication
+  //digitalWrite(dht11, LOW);
 
+  while (tick <= 30) {
+    itoa(tick, number, 10);
+  }
+
+  //stopTimer0();
+  tick = 0;
+
+}
 
 /***********************
    Interrupts handlers
@@ -46,7 +61,7 @@ int main(void)
 	
     while (1) 
     {
-		//readDHT11();
+		readDHT11();
     }
 }
 
