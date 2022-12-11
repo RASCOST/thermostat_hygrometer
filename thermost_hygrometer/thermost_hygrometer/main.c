@@ -9,6 +9,10 @@
 #include <avr/interrupt.h>
 #include <stdlib.h>
 
+#define DHT11 PC2
+#define EN PC0
+#define RS PC1
+
 volatile unsigned char tick = 0;
 
 /***********
@@ -55,7 +59,6 @@ ISR(TIMER0_OVF_vect) {
 
 int main(void)
 {
-    /* Replace with your application code */
 	setupTimer0();
 	startTimer0();
 	
