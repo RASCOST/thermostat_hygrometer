@@ -31,6 +31,13 @@ void setDTH11PortCOUT(void) {
 	DDRC = (DDRC & 0xFB) | (DDRC | 0x04);
 }
 
+/**********
+   PORTB
+**********/
+void initPORTB(void) {
+	DDRB = 0xFF; // D3 D2 D1 D0 -> outputs
+}
+
 /***********
    Timer 0
  **********/
@@ -74,6 +81,8 @@ ISR(TIMER0_OVF_vect) {
 }
 
 void initSystem(void) {
+	initPORTC();
+	initPORTB();
 	setupTimer0();
 	lcdInit();
 	lcdMoveCursor(0, 0);
