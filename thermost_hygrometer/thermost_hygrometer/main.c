@@ -10,9 +10,8 @@
 #include <stdlib.h>
 #include "lcd.h"
 
-#define DHT11 PINC2
-#define EN PINC0
-#define RS PINC1
+#define F_CPU 8000000UL
+#define DHT11 2
 
 volatile unsigned char tick = 0;
 
@@ -24,18 +23,20 @@ void initPORTC(void) {
 }
 
 void setDTH11PortCIN(void) {
-	DDRC &= 0xFB
+	DDRC &=  ~(1 << DHT11);
+	//DDRC &= 0xFB;
 }
 
 void setDTH11PortCOUT(void) {
-	DDRC = (DDRC & 0xFB) | (DDRC | 0x04);
+	DDRC = (DDRC & 0xFB) | (1 << DHT11);
+	//DDRC = (DDRC & 0xFB) | (DDRC | 0x04);
 }
 
 /**********
-   PORTB
+   PORTD
 **********/
-void initPORTB(void) {
-	DDRB = 0xFF; // D3 D2 D1 D0 -> outputs
+void initPORTD(void) {
+	DDRD = 0xFF; // D3 D2 D1 D0 -> outputs
 }
 
 /***********
@@ -82,13 +83,13 @@ ISR(TIMER0_OVF_vect) {
 
 void initSystem(void) {
 	initPORTC();
-	initPORTB();
-	setupTimer0();
+	initPORTD();
+	//setupTimer0();
 	lcdInit();
 	lcdMoveCursor(0, 0);
 	lcdPrint("Thermostat");
 	lcdMoveCursor(1, 0);
-	lcdPrint("Thermostat");
+	lcdPrint("Hydrometer");
 }
 
 int main(void)
@@ -99,6 +100,9 @@ int main(void)
     while (1) 
     {
 		//readDHT11();
+
     }
+	
+	return 0;
 }
 
