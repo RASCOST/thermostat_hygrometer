@@ -43,24 +43,36 @@ void initPORTD(void) {
    Timer 0
  **********/
 void setupTimer0() {
-  TCCR0A |= (1 << WGM01); // Set CTC mode
-  OCR0A = 0x0F; // 1 us
-  TIMSK0 |= (1 << OCIE0A);// Interrupt compare
-  sei();
+  TCCR0A &=  ~(1 << WGM01) | ~(1 << WGM00); // Set NORMAL MODE
+  TCCR0B &= ~(1 << WGM02);
 }
 
 void startTimer0() {
-  TCCR0B |= (1 << CS00); // No prescaling
+  TCCR0B |= (1 << CS01); // Prescaler 8
 }
 
 void stopTimer0() {
-  TCCR0B  |= (0 << CS00);
+  TCCR0B  &= ~(1 << CS01);
 }
 
 /*********
    DHT11
  ********/
-void readDHT11() {
+void setDTH11Interrupt(void) {
+    PCICR |= (1 << PCIE1);
+    PCMSK1 |= (1 << PCINT10);
+}
+
+void startComDHT11(void) {
+    setDTH11PortCOUT();
+    PORTC &= ~(1 << DHT11); // start signal pull-down serial bus
+    _delay_ms(20);
+    PORTC |= (1 << DHT11); // pull-up serial bus
+    setDTH11PortCIN(); // wait DTH11
+    
+}
+
+void readDHT11(void) {
   char number[2];
   // Start communication
   //digitalWrite(dht11, LOW);
@@ -100,10 +112,10 @@ int main(void)
     while (1) 
     {
 		//readDHT11();
-        PORTC ^= (1 << DHT11);
-        _delay_ms(1000);
-        PORTC ^= (1 << DHT11);
-        _delay_ms(1000);
+        //PORTC ^= (1 << DHT11);
+       // _delay_ms(1000);
+       // PORTC ^= (1 << DHT11);
+       // _delay_ms(1000);
     }
 	
 	return 0;
