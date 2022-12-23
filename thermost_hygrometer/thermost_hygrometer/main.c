@@ -88,8 +88,8 @@ void initSystem(void) {
 	lcdInit();
 	lcdMoveCursor(0, 0);
 	lcdPrint("Thermostat");
-	lcdMoveCursor(1, 0);
-	lcdPrint("Hydrometer");
+	//lcdMoveCursor(1, 0);
+	//lcdPrint("Hydrometer");
 }
 
 int main(void)
@@ -100,7 +100,10 @@ int main(void)
     while (1) 
     {
 		//readDHT11();
-
+        PORTC ^= (1 << DHT11);
+        _delay_ms(1000);
+        PORTC ^= (1 << DHT11);
+        _delay_ms(1000);
     }
 	
 	return 0;
