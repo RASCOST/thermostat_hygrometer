@@ -6,8 +6,8 @@
 # only prefixed by an `at`.
 
 #Build Directories
-*/[Dd]ebug/
-*/[Rr]elease/
+[Dd]ebug/
+[Rr]elease/
 
 #Build Results
 *.o
@@ -19,7 +19,7 @@
 *.srec
 
 #User Specific Files
-*.atsuo
+*/.atsuo
 
 ## KiCad
 # For PCBs designed using KiCad: https://www.kicad.org/
