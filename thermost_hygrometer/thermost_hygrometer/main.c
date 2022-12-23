@@ -15,6 +15,7 @@
 
 volatile unsigned char tick = 0;
 
+enum states{WAITING, RESPONSE, START_TRANS} state;
 /**********
    PORTC
 **********/
@@ -58,7 +59,7 @@ void stopTimer0() {
 /*********
    DHT11
  ********/
-void setDTH11Interrupt(void) {
+void enableDTH11Interrupt(void) {
     PCICR |= (1 << PCIE1);
     PCMSK1 |= (1 << PCINT10);
 }
@@ -69,13 +70,13 @@ void startComDHT11(void) {
     _delay_ms(20);
     PORTC |= (1 << DHT11); // pull-up serial bus
     setDTH11PortCIN(); // wait DTH11
-    
+    startTimer0();
 }
 
 void readDHT11(void) {
   char number[2];
   // Start communication
-  //digitalWrite(dht11, LOW);
+  startComDHT11();
 
   while (tick <= 30) {
     itoa(tick, number, 10);
@@ -91,6 +92,10 @@ void readDHT11(void) {
  **********************/
 ISR(TIMER0_OVF_vect) {
   tick++;
+}
+
+ISR(PCINT1) {
+    
 }
 
 void initSystem(void) {
