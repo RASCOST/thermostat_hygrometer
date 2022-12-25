@@ -13,9 +13,9 @@
 #define F_CPU 8000000UL
 #define DHT11 2
 
-volatile unsigned char tick = 0;
-
-enum states{WAITING, RESPONSE, START_TRANS} state;
+volatile enum states{WAITING, RESPONSE, START_TRANS, RECEIVE}state;
+volatile uint8_t resTime = 0;
+   
 /**********
    PORTC
 **********/
@@ -59,9 +59,35 @@ void stopTimer0() {
 /*********
    DHT11
  ********/
+int8_t convertDHT11Response(void) {
+    if (resTime >= 23 && resTime <= 33) {
+        resTime = 0;
+        return 0;
+    } else if (resTime >= 20 && resTime <= 40) {
+        resTime = 0;
+        return -1;
+    } else if (resTime >= 45 && resTime <= 55) {
+        resTime = 0;
+        return -1;
+    } else if (resTime >= 65 && resTime <= 75){
+        resTime = 0;
+        return 1;
+    } else if (resTime >= 75 && resTime <= 85) {
+        resTime = 0;
+        return -1;
+    }
+}
+
 void enableDTH11Interrupt(void) {
     PCICR |= (1 << PCIE1);
     PCMSK1 |= (1 << PCINT10);
+    sei();
+}
+
+void disableDHT11Interrupt(void) {
+    PCICR &= ~(1 << PCIE1);
+    PCMSK1 &= ~(1 << PCINT10);
+    cli();
 }
 
 void startComDHT11(void) {
@@ -70,38 +96,56 @@ void startComDHT11(void) {
     _delay_ms(20);
     PORTC |= (1 << DHT11); // pull-up serial bus
     setDTH11PortCIN(); // wait DTH11
+    enableDTH11Interrupt();
     startTimer0();
 }
 
 void readDHT11(void) {
-  char number[2];
-  // Start communication
-  startComDHT11();
+    uint8_t bits[40];
+    uint8_t rec = 0;
+    uint8_t value = 0;
+  
+    // Start communication
+    startComDHT11();
 
-  while (tick <= 30) {
-    itoa(tick, number, 10);
-  }
-
-  //stopTimer0();
-  tick = 0;
-
+    while (rec <= 40) {
+        value = convertDHT11Response();
+        if (value == -1)
+            continue;
+        bits[rec] = value;
+        rec++;
+          
+    }
+  
+    // Received all data from DHT11
+    disableDHT11Interrupt();
+    stopTimer0();
+    TCNT0 = 0;
+    lcdMoveCursor(2, 0);
+    lcdPrint("Received");
 }
 
 /***********************
    Interrupts handlers
  **********************/
-ISR(TIMER0_OVF_vect) {
-  tick++;
-}
-
-ISR(PCINT1) {
+ISR(PCINT1_vect) {
+    stopTimer0();
     
+    if (PINC & (1 << PINC2) == 1) {
+        resTime = TCNT0;
+    }
+    
+    TCNT0 = 0;
+    startTimer0();
 }
 
+/**********************
+
+**********************/
 void initSystem(void) {
 	initPORTC();
 	initPORTD();
-	//setupTimer0();
+	setupTimer0();
 	lcdInit();
 	lcdMoveCursor(0, 0);
 	lcdPrint("Thermostat");
@@ -116,7 +160,8 @@ int main(void)
 	
     while (1) 
     {
-		//readDHT11();
+        _delay_ms(5000);
+		readDHT11();
         //PORTC ^= (1 << DHT11);
        // _delay_ms(1000);
        // PORTC ^= (1 << DHT11);
