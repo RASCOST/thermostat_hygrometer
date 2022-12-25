@@ -20,6 +20,9 @@
 
 #User Specific Files
 */.atsuo
+*.atsln
+*.cproj
+*.xml
 
 ## KiCad
 # For PCBs designed using KiCad: https://www.kicad.org/
@@ -55,3 +58,6 @@ fp-info-cache
 
 # PDF
 *.pdf
+
+# VS Code
+/.vs
