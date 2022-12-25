@@ -60,4 +60,4 @@ _autosave_*
 *.pdf
 
 # VS Code
-/.vs
+/thermostat_hygrometer/.vs
