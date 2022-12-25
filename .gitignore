@@ -6,8 +6,8 @@
 # only prefixed by an `at`.
 
 #Build Directories
-/[Dd]ebug
-/[Rr]elease
+/thermostat_hygrometer/[Dd]ebug
+/thermostat_hygrometer/[Rr]elease
 
 #Build Results
 *.o
@@ -20,7 +20,7 @@
 
 #User Specific Files
 */.atsuo
-*.atsln
+/thermostat_hygrometer/*.atsln
 *.cproj
 *.xml
 
@@ -34,7 +34,7 @@
 *.bck
 *.kicad_pcb-bak
 *.kicad_sch-bak
-*-backups
+/hardware/termostat_hygrometro/*-backups
 *.kicad_prl
 *.sch-bak
 *~
@@ -42,7 +42,7 @@ _autosave_*
 *.tmp
 *-save.pro
 *-save.kicad_pcb
-fp-info-cache
+/hardware/termostat_hygrometro/fp-info-cache
 *.zip
 
 # Netlist files (exported from Eeschema)
