@@ -8,11 +8,16 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <avr/pgmspace.h>
+
 #include "lcd.h"
 
 #define F_CPU 8000000UL
 #define DHT11 2
 
+const uint8_t weights[8] PROGMEM = {128, 64, 32, 16, 8, 4, 2 , 1};
+    
 volatile enum states{WAITING, RESPONSE, START_TRANS, RECEIVE}state;
 volatile uint8_t resTime = 0;
    
@@ -59,22 +64,13 @@ void stopTimer0() {
 /*********
    DHT11
  ********/
-int8_t convertDHT11Response(void) {
+uint8_t convertDHT11Response(void) {
     if (resTime >= 23 && resTime <= 33) {
         resTime = 0;
         return 0;
-    } else if (resTime >= 20 && resTime <= 40) {
-        resTime = 0;
-        return -1;
-    } else if (resTime >= 45 && resTime <= 55) {
-        resTime = 0;
-        return -1;
-    } else if (resTime >= 65 && resTime <= 75){
+    } else if (resTime >= 65 && resTime <= 75) {
         resTime = 0;
         return 1;
-    } else if (resTime >= 75 && resTime <= 85) {
-        resTime = 0;
-        return -1;
     }
 }
 
@@ -96,24 +92,41 @@ void startComDHT11(void) {
     _delay_ms(20);
     PORTC |= (1 << DHT11); // pull-up serial bus
     setDTH11PortCIN(); // wait DTH11
+    while ((PINC & (1 << PINC2)));
+    while (!(PINC & (1 << PINC2)));
+    while ((PINC & (1 << PINC2)));
+    while (!(PINC & (1 << PINC2)));
     enableDTH11Interrupt();
-    startTimer0();
+    //startTimer0();
+}
+
+uint8_t getHygroValue(uint8_t bits[]) {
+    uint8_t value = 0;
+    
+    for (uint8_t idx=0; idx < 8; idx++) {
+        if (bits[idx] == 1)
+            value += pgm_read_byte(&(weights[idx]));
+    }
+    
+    return value;
 }
 
 void readDHT11(void) {
     uint8_t bits[40];
     uint8_t rec = 0;
     uint8_t value = 0;
-  
+    char hygro[8];
+    
     // Start communication
     startComDHT11();
 
-    while (rec <= 40) {
+    while (rec < 40) {
         value = convertDHT11Response();
-        if (value == -1)
-            continue;
-        bits[rec] = value;
-        rec++;
+        
+        if (value != -1){
+            bits[rec] = value;
+            rec++;
+        }            
           
     }
   
@@ -122,21 +135,26 @@ void readDHT11(void) {
     stopTimer0();
     TCNT0 = 0;
     lcdMoveCursor(2, 0);
-    lcdPrint("Received");
+    sprintf(hygro, "H: %d", getHygroValue(bits));
+    lcdPrint(hygro);
+    setDTH11PortCOUT();
 }
 
 /***********************
    Interrupts handlers
  **********************/
 ISR(PCINT1_vect) {
-    stopTimer0();
-    
-    if (PINC & (1 << PINC2) == 1) {
+    char test[8];
+    if ((PINC & (1 << PINC2))) {
+        TCNT0 = 0;
+        startTimer0();
+    } else {
+        stopTimer0();
         resTime = TCNT0;
-    }
-    
-    TCNT0 = 0;
-    startTimer0();
+        lcdMoveCursor(2, 0);
+        sprintf(test, "T: %d", TCNT0);
+        lcdPrint(test);
+    }   
 }
 
 /**********************
