@@ -14,7 +14,7 @@
 #include "lcd.h"
 
 #define F_CPU 8000000UL
-#define DHT11 2
+#define DHT11 4
 
 const uint8_t weights[8] PROGMEM = {128, 64, 32, 16, 8, 4, 2 , 1};
     
@@ -25,24 +25,26 @@ volatile uint8_t resTime = 0;
    PORTC
 **********/
 void initPORTC(void) {
-	DDRC = 0x07; // EN, RS and DHT11 is output when start communication 
-}
-
-void setDTH11PortCIN(void) {
-	DDRC &=  ~(1 << DHT11);
-	//DDRC &= 0xFB;
-}
-
-void setDTH11PortCOUT(void) {
-	DDRC = (DDRC & 0xFB) | (1 << DHT11);
-	//DDRC = (DDRC & 0xFB) | (DDRC | 0x04);
+	//DDRC = 0x07; // EN, RS and DHT11 is output when start communication
+    DDRC = 0xFF; // D3 D2 D1 D0 -> outputs  
 }
 
 /**********
    PORTD
 **********/
 void initPORTD(void) {
-	DDRD = 0xFF; // D3 D2 D1 D0 -> outputs
+	//DDRD = 0xFF; // D3 D2 D1 D0 -> outputs ANTES
+    DDRD = 0x1C; // EN, RS and DHT11 is output when start communication
+}
+
+void setDTH11PortDIN(void) {
+    DDRD &=  ~(1 << DHT11);
+    //DDRC &= 0xFB;
+}
+
+void setDTH11PortDOUT(void) {
+    DDRD = (DDRD & 0xFB) | (1 << DHT11);
+    //DDRC = (DDRC & 0xFB) | (DDRC | 0x04);
 }
 
 /***********
@@ -87,11 +89,11 @@ void disableDHT11Interrupt(void) {
 }
 
 void startComDHT11(void) {
-    setDTH11PortCOUT();
+    setDTH11PortDOUT();
     PORTC &= ~(1 << DHT11); // start signal pull-down serial bus
     _delay_ms(20);
     PORTC |= (1 << DHT11); // pull-up serial bus
-    setDTH11PortCIN(); // wait DTH11
+    setDTH11PortDIN(); // wait DTH11
     while ((PINC & (1 << PINC2)));
     while (!(PINC & (1 << PINC2)));
     while ((PINC & (1 << PINC2)));
@@ -137,7 +139,7 @@ void readDHT11(void) {
     lcdMoveCursor(2, 0);
     sprintf(hygro, "H: %d", getHygroValue(bits));
     lcdPrint(hygro);
-    setDTH11PortCOUT();
+    setDTH11PortDOUT();
 }
 
 /***********************
