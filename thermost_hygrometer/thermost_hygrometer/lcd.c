@@ -12,11 +12,11 @@
 #define CLEAR_RS( x, y ) ( x &= ~ BIT( y ) )
 #define SET_EN( x , y ) ( x |= BIT( y ) )
 #define CLEAR_EN( x, y ) ( x &= ~ BIT( y ) )
-#define LCD PORTD
+#define LCD PORTC
 #define WRITE_LCD( x ) ( LCD = ( LCD & 0xF0 ) | ( x & 0x0F )  )
-#define CMD PORTC
-#define EN PORTC0
-#define RS PORTC1
+#define CMD PORTD
+#define EN PORTD2
+#define RS PORTD3
 
 static void lcdCmd(uint8_t cmd)
 {
