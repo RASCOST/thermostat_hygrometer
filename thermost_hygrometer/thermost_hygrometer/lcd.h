@@ -14,8 +14,8 @@
 #include <util/delay.h>
 #include <avr/io.h>
 
-static void lcdCmd( uint8_t cmd );
-static void lcdData( uint8_t data );
+/*static void lcdCmd( uint8_t cmd );
+static void lcdData( uint8_t data );*/
 void lcdPrint( char *msg );
 void lcdMoveCursor( uint8_t line, uint8_t row );
 void lcdCursorLeftShift();
