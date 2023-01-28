@@ -21,7 +21,7 @@
 #User Specific Files
 */.atsuo
 /thermostat_hygrometer/thermostat_hygrometer/*.atsln
-/thermost_hygrometer/thermost_hygrometer/*.cproj
+/thermost_hygrometer/thermost_hygrometer/thermost_hygrometer.cproj
 *.xml
 
 ## KiCad
