@@ -6,8 +6,8 @@
 # only prefixed by an `at`.
 
 #Build Directories
-/thermostat_hygrometer/thermostat_hygrometer/[Dd]ebug
-/thermostat_hygrometer/thermostat_hygrometer/[Rr]elease
+/thermost_hygrometer/thermostat_hygrometer/[Dd]ebug
+/thermost_hygrometer/thermostat_hygrometer/[Rr]elease
 
 #Build Results
 *.o
@@ -21,7 +21,7 @@
 #User Specific Files
 */.atsuo
 /thermostat_hygrometer/thermostat_hygrometer/*.atsln
-*.cproj
+thermost_hygrometer/thermost_hygrometer/*.cproj
 *.xml
 
 ## KiCad
@@ -60,4 +60,4 @@ _autosave_*
 *.pdf
 
 # VS Code
-/thermostat_hygrometer/.vs
+/thermost_hygrometer/.vs
