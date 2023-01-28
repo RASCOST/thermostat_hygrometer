@@ -6,8 +6,8 @@
 # only prefixed by an `at`.
 
 #Build Directories
-/thermost_hygrometer/thermostat_hygrometer/[Dd]ebug
-/thermost_hygrometer/thermostat_hygrometer/[Rr]elease
+/thermost_hygrometer/thermost_hygrometer/[Dd]ebug
+/thermost_hygrometer/thermost_hygrometer/[Rr]elease
 
 #Build Results
 *.o
