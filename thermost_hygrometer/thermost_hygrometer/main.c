@@ -136,12 +136,14 @@ uint8_t getTempValue(uint8_t bits[]) {
 void readDHT11(void) {
     uint8_t bits[40];
     uint8_t ascii[2];
-    // Start communication
     
+    // Start communication
     SET_DHT11PIN_OUTPUT;
     _delay_ms(20);
     SET_DHT11PIN_INPUT;
     enableDTH11Interrupt();
+    
+    // Receiving data
     for (uint8_t bit=0; bit < 40; bit++) {
         //txString("in data\n");
         while(data_ticks == 0);
@@ -155,9 +157,11 @@ void readDHT11(void) {
         data_ticks = 0;
     }
 
+    // Finished Receiving data
     disableDHT11Interrupt();
     stopTimer0();
     state = START;
+    
     charToAscii(getHygroValue(bits), ascii);
     txMultiByteData(ascii, 2);
     lcdMoveCursor(2, 0);
@@ -178,21 +182,18 @@ ISR(PCINT2_vect) {
             if (!(PIND & (1<<PD_DHT11))) {
                 state = WAIT_RESP_LOW;
             }
-            
             break;
             
         case WAIT_RESP_LOW:
             if ((PIND & (1<<PD_DHT11))) {
                state = WAIT_RESP_HIGH;
             }
-           
            break;
            
         case WAIT_RESP_HIGH:
             if (!(PIND & (1<<PD_DHT11))) {
                 state = START_TRANS;
             }
-        
             break;
         
         case START_TRANS:
@@ -200,7 +201,6 @@ ISR(PCINT2_vect) {
                 startTimer0();
                 state = RCV_DATA;
             }
-        
             break;
         
         case RCV_DATA:
@@ -208,10 +208,8 @@ ISR(PCINT2_vect) {
                 stopTimer0();
                 state = START_TRANS;
                 data_ticks = TCNT0;
-            
                 TCNT0 = 0;
             }
-        
             break;
     }
 }
@@ -239,10 +237,7 @@ int main(void)
     while (1) 
     {
         readDHT11();
-        //PORTD ^= (1<<5);
         _delay_ms(5000);
-        /*PORTD ^= (1<<5);
-        _delay_ms(20);*/
     }
 	
 	return 0;
