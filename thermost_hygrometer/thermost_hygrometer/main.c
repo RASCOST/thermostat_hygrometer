@@ -4,28 +4,36 @@
  * Created: 20/02/2022 10:51:47
  * Author : RASC
  */ 
+#define F_CPU 8000000UL
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <avr/pgmspace.h>
+#include <string.h>
+#include <avr/cpufunc.h>
 
 #include "lcd.h"
+#include "uart.h"
 
-#define F_CPU 8000000UL
-#define DHT11 4
+#define PD_DHT11 4
+
+#define SET_DHT11PIN_INPUT (DDRD &= ~(1 << PD_DHT11))
+#define SET_DHT11PIN_OUTPUT (DDRD |= (1 << PD_DHT11))
+#define N_ELEMS(x)  (sizeof(x) / sizeof((x)[0]))
 
 const uint8_t weights[8] PROGMEM = {128, 64, 32, 16, 8, 4, 2 , 1};
     
-volatile enum states{WAITING, RESPONSE, START_TRANS, RECEIVE}state;
-volatile uint8_t resTime = 0;
+enum states{START, WAIT_RESP_LOW, WAIT_RESP_HIGH, START_TRANS, RCV_DATA};
+volatile enum states state = START;
+
+volatile uint8_t data_ticks = 0;
    
 /**********
    PORTC
 **********/
 void initPORTC(void) {
-	//DDRC = 0x07; // EN, RS and DHT11 is output when start communication
     DDRC = 0xFF; // D3 D2 D1 D0 -> outputs  
 }
 
@@ -33,74 +41,75 @@ void initPORTC(void) {
    PORTD
 **********/
 void initPORTD(void) {
-	//DDRD = 0xFF; // D3 D2 D1 D0 -> outputs ANTES
-    DDRD = 0x1C; // EN, RS and DHT11 is output when start communication
+    DDRD = 0x0C; // EN, RS
 }
 
 void setDTH11PortDIN(void) {
-    DDRD &=  ~(1 << DHT11);
-    //DDRC &= 0xFB;
+    DDRD &=  ~(1 << PD_DHT11); // set PORTD4 as input
 }
 
 void setDTH11PortDOUT(void) {
-    DDRD = (DDRD & 0xFB) | (1 << DHT11);
-    //DDRC = (DDRC & 0xFB) | (DDRC | 0x04);
+    DDRD |= (1 << PD_DHT11); // set PORTD4 as output
 }
 
 /***********
    Timer 0
  **********/
-void setupTimer0() {
-  TCCR0A &=  ~(1 << WGM01) | ~(1 << WGM00); // Set NORMAL MODE
+void setupTimer0(void) {
+  TCCR0A &=  (~(1 << WGM01) | ~(1 << WGM00)); // Set NORMAL MODE
   TCCR0B &= ~(1 << WGM02);
 }
 
-void startTimer0() {
+void startTimer0(void) {
   TCCR0B |= (1 << CS01); // Prescaler 8
 }
 
-void stopTimer0() {
+void stopTimer0(void) {
   TCCR0B  &= ~(1 << CS01);
+}
+
+/****************
+* Utils
+****************/
+void charToAscii(uint8_t number, uint8_t* ascii)
+{    
+    if(10 <= number)
+    {
+        ascii[0] = ((uint8_t) (number / 10)) + 0X30; //0X30 is the ASCII value of zero
+        ascii[1] = (number - ((ascii[0]-0X30) * 10)) + 0X30;
+    }
+    else
+    {
+        ascii[0] = 0X30;
+        ascii[1] = 0X30 + number;
+    }
 }
 
 /*********
    DHT11
  ********/
-uint8_t convertDHT11Response(void) {
-    if (resTime >= 23 && resTime <= 33) {
-        resTime = 0;
-        return 0;
-    } else if (resTime >= 65 && resTime <= 75) {
-        resTime = 0;
-        return 1;
+int8_t convertDHT11Response(uint8_t* bits) {
+    uint8_t number = 0;
+    
+    for (uint8_t n=0; n < 8; n++) {
+        number += bits[n] * weights[n];
     }
+    
+    return number;
 }
 
 void enableDTH11Interrupt(void) {
-    PCICR |= (1 << PCIE1);
-    PCMSK1 |= (1 << PCINT10);
+    PCICR |= (1 << PCIE2);
+    PCMSK2 |= (1 << PCINT20);
     sei();
 }
 
 void disableDHT11Interrupt(void) {
-    PCICR &= ~(1 << PCIE1);
-    PCMSK1 &= ~(1 << PCINT10);
+    PCICR &= ~(1 << PCIE2);
+    PCMSK2 &= ~(1 << PCINT20);
     cli();
 }
 
-void startComDHT11(void) {
-    setDTH11PortDOUT();
-    PORTC &= ~(1 << DHT11); // start signal pull-down serial bus
-    _delay_ms(20);
-    PORTC |= (1 << DHT11); // pull-up serial bus
-    setDTH11PortDIN(); // wait DTH11
-    while ((PINC & (1 << PINC2)));
-    while (!(PINC & (1 << PINC2)));
-    while ((PINC & (1 << PINC2)));
-    while (!(PINC & (1 << PINC2)));
-    enableDTH11Interrupt();
-    //startTimer0();
-}
 
 uint8_t getHygroValue(uint8_t bits[]) {
     uint8_t value = 0;
@@ -113,50 +122,98 @@ uint8_t getHygroValue(uint8_t bits[]) {
     return value;
 }
 
+uint8_t getTempValue(uint8_t bits[]) {
+    uint8_t value = 0;
+    
+    for (uint8_t idx=16; idx < 24; idx++) {
+        if (bits[idx] == 1)
+        value += pgm_read_byte(&(weights[idx-16]));
+    }
+    
+    return value;
+}
+
 void readDHT11(void) {
     uint8_t bits[40];
-    uint8_t rec = 0;
-    uint8_t value = 0;
-    char hygro[8];
-    
+    uint8_t ascii[2];
     // Start communication
-    startComDHT11();
-
-    while (rec < 40) {
-        value = convertDHT11Response();
+    
+    SET_DHT11PIN_OUTPUT;
+    _delay_ms(20);
+    SET_DHT11PIN_INPUT;
+    enableDTH11Interrupt();
+    for (uint8_t bit=0; bit < 40; bit++) {
+        //txString("in data\n");
+        while(data_ticks == 0);
         
-        if (value != -1){
-            bits[rec] = value;
-            rec++;
-        }            
-          
+        if (data_ticks > 30) {
+            bits[bit] = 1;
+        } else {
+            bits[bit] = 0;
+        }
+        
+        data_ticks = 0;
     }
-  
-    // Received all data from DHT11
+
     disableDHT11Interrupt();
     stopTimer0();
-    TCNT0 = 0;
+    state = START;
+    charToAscii(getHygroValue(bits), ascii);
+    txMultiByteData(ascii, 2);
     lcdMoveCursor(2, 0);
-    sprintf(hygro, "H: %d", getHygroValue(bits));
-    lcdPrint(hygro);
-    setDTH11PortDOUT();
+    lcdPrint(ascii);
+    charToAscii(getTempValue(bits), ascii);
+    txMultiByteData(ascii, 2);
+    lcdMoveCursor(1, 0);
+    lcdPrint(ascii);
 }
 
 /***********************
    Interrupts handlers
  **********************/
-ISR(PCINT1_vect) {
-    char test[8];
-    if ((PINC & (1 << PINC2))) {
-        TCNT0 = 0;
-        startTimer0();
-    } else {
-        stopTimer0();
-        resTime = TCNT0;
-        lcdMoveCursor(2, 0);
-        sprintf(test, "T: %d", TCNT0);
-        lcdPrint(test);
-    }   
+ISR(PCINT2_vect) {
+    
+    switch(state) {
+        case START:
+            if (!(PIND & (1<<PD_DHT11))) {
+                state = WAIT_RESP_LOW;
+            }
+            
+            break;
+            
+        case WAIT_RESP_LOW:
+            if ((PIND & (1<<PD_DHT11))) {
+               state = WAIT_RESP_HIGH;
+            }
+           
+           break;
+           
+        case WAIT_RESP_HIGH:
+            if (!(PIND & (1<<PD_DHT11))) {
+                state = START_TRANS;
+            }
+        
+            break;
+        
+        case START_TRANS:
+            if ((PIND & (1<<PD_DHT11))) {
+                startTimer0();
+                state = RCV_DATA;
+            }
+        
+            break;
+        
+        case RCV_DATA:
+            if (!(PIND & (1<<PD_DHT11))) {
+                stopTimer0();
+                state = START_TRANS;
+                data_ticks = TCNT0;
+            
+                TCNT0 = 0;
+            }
+        
+            break;
+    }
 }
 
 /**********************
@@ -165,10 +222,11 @@ ISR(PCINT1_vect) {
 void initSystem(void) {
 	initPORTC();
 	initPORTD();
+    initUART();
 	setupTimer0();
 	lcdInit();
-	lcdMoveCursor(0, 0);
-	lcdPrint("Thermostat");
+	lcdMoveCursor(1, 0);
+	lcdPrint("Thermost");
 	//lcdMoveCursor(1, 0);
 	//lcdPrint("Hydrometer");
 }
@@ -176,16 +234,15 @@ void initSystem(void) {
 int main(void)
 {
 	initSystem();
-	//startTimer0();
-	
+    txString("Hello from Thermostat and Hygrometer\n");
+
     while (1) 
     {
+        readDHT11();
+        //PORTD ^= (1<<5);
         _delay_ms(5000);
-		readDHT11();
-        //PORTC ^= (1 << DHT11);
-       // _delay_ms(1000);
-       // PORTC ^= (1 << DHT11);
-       // _delay_ms(1000);
+        /*PORTD ^= (1<<5);
+        _delay_ms(20);*/
     }
 	
 	return 0;
