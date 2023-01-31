@@ -71,7 +71,7 @@ void stopTimer0(void) {
 /****************
 * Utils
 ****************/
-void charToAscii(uint8_t number, uint8_t* ascii)
+void charToAscii(uint8_t number, char* ascii)
 {    
     if(10 <= number)
     {
@@ -135,7 +135,7 @@ uint8_t getTempValue(uint8_t bits[]) {
 
 void readDHT11(void) {
     uint8_t bits[40];
-    uint8_t ascii[2];
+    char ascii[2];
     
     // Start communication
     SET_DHT11PIN_OUTPUT;
@@ -163,12 +163,12 @@ void readDHT11(void) {
     state = START;
     
     charToAscii(getHygroValue(bits), ascii);
-    txMultiByteData(ascii, 2);
-    lcdMoveCursor(2, 0);
+    //txMultiByteData(ascii, 2);
+    lcdMoveCursor(2, 3);
     lcdPrint(ascii);
-    charToAscii(getTempValue(bits), ascii);
-    txMultiByteData(ascii, 2);
-    lcdMoveCursor(1, 0);
+    charToAscii(getTempValue(bits)-2, ascii);
+    //txMultiByteData(ascii, 2);
+    lcdMoveCursor(1, 3);
     lcdPrint(ascii);
 }
 
@@ -225,15 +225,20 @@ void initSystem(void) {
 	lcdInit();
 	lcdMoveCursor(1, 0);
 	lcdPrint("Thermost");
-	//lcdMoveCursor(1, 0);
-	//lcdPrint("Hydrometer");
+	lcdMoveCursor(2, 0);
+	lcdPrint("Hygrome");
 }
 
 int main(void)
 {
 	initSystem();
-    txString("Hello from Thermostat and Hygrometer\n");
-
+    //txString("Hello from Thermostat and Hygrometer\n");
+    _delay_ms(5000);
+    lcdClear();
+    //lcdMoveCursor(1, 0);
+    lcdPrint("T: ");
+    lcdMoveCursor(2, 0);
+    lcdPrint("H: ");
     while (1) 
     {
         readDHT11();
