@@ -10,7 +10,7 @@
 #define TRUE 1
 
 void initUART(void) {
-    UBRR0H = (uint8_t) (8 >> UBRR_VAL);
+    UBRR0H = (uint8_t) (UBRR_VAL >> 8);
     UBRR0L = (uint8_t) (UBRR_VAL);
     UCSR0B |= (1 << TXEN0); // only transmitter next version of file will include preprocessor directives to choose
     UCSR0C |= (1 << UCSZ00); // frame format: 8data, 1 stop bit
@@ -22,7 +22,7 @@ uint8_t txByteData(uint8_t data) {
 
 }
 
-void txMultiByteData(uint8_t* data, uint8_t length) {
+void txMultiByteData(char* data, uint8_t length) {
     for (uint8_t idx = 0; idx < length; idx++) {
         //while (!txByteData(data[idx]));
         txByteData(data[idx]);
